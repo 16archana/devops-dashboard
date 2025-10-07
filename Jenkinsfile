@@ -20,11 +20,19 @@ pipeline {
             steps {
                 echo "Deploying container..."
                 sh '''
-                # Stop old container if running
+                echo "Stopping old container if running..."
                 docker stop devops-dashboard || true
                 docker rm devops-dashboard || true
 
-                # Run new container
+                echo "Checking if port 9090 is already in use..."
+                CONTAINER_ID=$(docker ps -q --filter "publish=9090")
+                if [ ! -z "$CONTAINER_ID" ]; then
+                    echo "Port 9090 is busy. Stopping container $CONTAINER_ID"
+                    docker stop $CONTAINER_ID || true
+                    docker rm $CONTAINER_ID || true
+                fi
+
+                echo "Running new container..."
                 docker run -d -p 9090:80 --name devops-dashboard devops-dashboard:latest
                 '''
             }
@@ -33,10 +41,11 @@ pipeline {
 
     post {
         success {
-            echo "DevOps Dashboard deployed successfully! 🎉"
+            echo "✅ DevOps Dashboard deployed successfully at http://localhost:9090 🎉"
         }
         failure {
-            echo "Build or deploy failed ❌"
+            echo "❌ Build or deploy failed"
         }
     }
 }
+
